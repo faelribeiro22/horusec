@@ -44,7 +44,7 @@ func TestGenerate_CreateCobraCmd(t *testing.T) {
 	_ = globalCmd.PersistentFlags().String("config-file-path", "./tmp/horusec-config.json", "Path of the file horusec-config.json to setup content of horusec")
 	t.Run("Should create file with default configuration", func(t *testing.T) {
 		configs := config.New()
-		configs.SetConfigFilePath("./tmp/horusec-config1.json")
+		configs.ConfigFilePath = "./tmp/horusec-config1.json"
 		cmd := NewGenerateCommand(configs)
 		stdoutMock := bytes.NewBufferString("")
 		logrus.SetOutput(stdoutMock)
@@ -56,7 +56,7 @@ func TestGenerate_CreateCobraCmd(t *testing.T) {
 		output := string(outputBytes)
 		assert.NoError(t, err)
 		assert.Contains(t, output, messages.MsgInfoConfigFileCreatedSuccess)
-		file, _ := os.Open(configs.GetConfigFilePath())
+		file, _ := os.Open(configs.ConfigFilePath)
 		defer func() {
 			_ = file.Close()
 		}()
@@ -66,18 +66,18 @@ func TestGenerate_CreateCobraCmd(t *testing.T) {
 	t.Run("Should update file already exists with default configuration", func(t *testing.T) {
 		// Create configuration
 		configs := config.New()
-		configs.SetConfigFilePath("./tmp/horusec-config2.json")
+		configs.ConfigFilePath = "./tmp/horusec-config2.json"
 		cmd := NewGenerateCommand(configs)
 
 		// Create existing file and write empry object
-		_, err := os.Create(configs.GetConfigFilePath())
+		_, err := os.Create(configs.ConfigFilePath)
 		assert.NoError(t, err)
-		fileExisting, err := os.OpenFile(configs.GetConfigFilePath(), os.O_CREATE|os.O_WRONLY, 0600)
+		fileExisting, err := os.OpenFile(configs.ConfigFilePath, os.O_CREATE|os.O_WRONLY, 0600)
 		assert.NoError(t, err)
 		_, err = fileExisting.Write([]byte("{}"))
 		assert.NoError(t, err)
 		_ = fileExisting.Close()
-		fileExisting, err = os.Open(configs.GetConfigFilePath())
+		fileExisting, err = os.Open(configs.ConfigFilePath)
 		assert.NoError(t, err)
 		fileExistingBytes, err := ioutil.ReadAll(fileExisting)
 		assert.NoError(t, err)
@@ -97,7 +97,7 @@ func TestGenerate_CreateCobraCmd(t *testing.T) {
 		assert.Contains(t, output, messages.MsgInfoConfigAlreadyExist)
 
 		// Check content on file created
-		file, _ := os.Open(configs.GetConfigFilePath())
+		file, _ := os.Open(configs.ConfigFilePath)
 		fileBytes, _ := ioutil.ReadAll(file)
 		assert.NotEmpty(t, string(fileBytes))
 		assert.NotEqual(t, "{}", string(fileBytes))

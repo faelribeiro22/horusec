@@ -143,15 +143,15 @@ func (a *Analyzer) removeTrashByInterruptProcess() {
 }
 
 func (a *Analyzer) removeHorusecFolder() {
-	err := os.RemoveAll(a.config.GetProjectPath() + file.ReplacePathSeparator("/.horusec"))
+	err := os.RemoveAll(a.config.ProjectPath + file.ReplacePathSeparator("/.horusec"))
 	logger.LogErrorWithLevel(messages.MsgErrorRemoveAnalysisFolder, err)
-	if !a.config.GetDisableDocker() {
+	if !a.config.DisableDocker {
 		a.docker.DeleteContainersFromAPI()
 	}
 }
 
 func (a *Analyzer) runAnalysis() (totalVulns int, err error) {
-	langs, err := a.languageDetect.Detect(a.config.GetProjectPath())
+	langs, err := a.languageDetect.Detect(a.config.ProjectPath)
 	if err != nil {
 		return 0, err
 	}
@@ -174,7 +174,7 @@ func (a *Analyzer) sendAnalysisAndStartPrintResults() (int, error) {
 
 func (a *Analyzer) formatAnalysisToPrint() {
 	a.analysis = a.setFalsePositive()
-	if !a.config.GetEnableInformationSeverity() {
+	if !a.config.EnableInformationSeverity {
 		a.analysis = a.removeInfoVulnerabilities()
 	}
 	a.analysis = a.removeVulnerabilitiesByTypes()
@@ -188,7 +188,7 @@ func (a *Analyzer) formatAnalysisToSendToAPI() {
 	a.analysis = a.setDefaultVulnerabilityType()
 	a.analysis = a.setDefaultConfidence()
 	a.analysis = a.sortVulnerabilitiesByType()
-	if !a.config.GetEnableInformationSeverity() {
+	if !a.config.EnableInformationSeverity {
 		a.analysis = a.removeInfoVulnerabilities()
 	}
 }
@@ -201,7 +201,7 @@ func (a *Analyzer) startDetectVulnerabilities(langs []languages.Language) {
 	var wg sync.WaitGroup
 	done := make(chan struct{})
 
-	wd := a.config.GetWorkDir()
+	wd := a.config.WorkDir
 	funcs := a.mapDetectVulnerabilityByLanguage()
 
 	go func() {
@@ -225,9 +225,9 @@ func (a *Analyzer) startDetectVulnerabilities(langs []languages.Language) {
 		wg.Wait()
 	}()
 
-	timeout := a.config.GetTimeoutInSecondsAnalysis()
+	timeout := a.config.TimeoutInSecondsAnalysis
 	timer := time.After(time.Duration(timeout) * time.Second)
-	retry := a.config.GetMonitorRetryInSeconds()
+	retry := a.config.MonitorRetryInSeconds
 	tick := time.NewTicker(time.Duration(retry) * time.Second)
 	defer tick.Stop()
 	logger.LogInfoWithLevel(fmt.Sprintf("%s%ds", messages.MsgInfoMonitorTimeoutIn, timeout))
@@ -290,7 +290,7 @@ func (a *Analyzer) detectVulnerabilityCsharp(wg *sync.WaitGroup, projectSubPath 
 func (a *Analyzer) detectVulnerabilityLeaks(wg *sync.WaitGroup, projectSubPath string) error {
 	spawn(wg, horusecleaks.NewFormatter(a.formatter), projectSubPath)
 
-	if a.config.GetEnableGitHistoryAnalysis() {
+	if a.config.EnableGitHistoryAnalysis {
 		logger.LogWarnWithLevel(messages.MsgWarnGitHistoryEnable)
 
 		if err := a.docker.PullImage(a.getCustomOrDefaultImage(languages.Leaks)); err != nil {
@@ -442,10 +442,10 @@ func (a *Analyzer) checkIfNoExistHashAndLog(list []string) {
 
 func (a *Analyzer) setFalsePositive() *analysis.Analysis {
 	a.analysis = a.SetFalsePositivesAndRiskAcceptInVulnerabilities(
-		a.config.GetFalsePositiveHashes(), a.config.GetRiskAcceptHashes())
+		a.config.FalsePositiveHashes, a.config.RiskAcceptHashes)
 
-	a.checkIfNoExistHashAndLog(a.config.GetFalsePositiveHashes())
-	a.checkIfNoExistHashAndLog(a.config.GetRiskAcceptHashes())
+	a.checkIfNoExistHashAndLog(a.config.FalsePositiveHashes)
+	a.checkIfNoExistHashAndLog(a.config.RiskAcceptHashes)
 	return a.analysis
 }
 
@@ -460,7 +460,7 @@ func (a *Analyzer) setAnalysisError(err error) {
 	}
 }
 func (a *Analyzer) getCustomOrDefaultImage(language languages.Language) string {
-	if customImage := a.config.GetCustomImages()[language.GetCustomImagesKeyByLanguage()]; customImage != "" {
+	if customImage := a.config.CustomImages[language.GetCustomImagesKeyByLanguage()]; customImage != "" {
 		return customImage
 	}
 	return fmt.Sprintf("%s/%s", images.DefaultRegistry, images.MapValues()[language])
@@ -588,7 +588,7 @@ func (a *Analyzer) removeInfoVulnerabilities() *analysis.Analysis {
 
 func (a *Analyzer) removeVulnerabilitiesBySeverity() *analysis.Analysis {
 	var vulnerabilities []analysis.AnalysisVulnerabilities
-	severitiesToIgnore := a.config.GetSeveritiesToIgnore()
+	severitiesToIgnore := a.config.SeveritiesToIgnore
 
 outer:
 	for index := range a.analysis.AnalysisVulnerabilities {
@@ -609,7 +609,7 @@ func (a *Analyzer) removeVulnerabilitiesByTypes() *analysis.Analysis {
 
 	for index := range a.analysis.AnalysisVulnerabilities {
 		vulnType := a.analysis.AnalysisVulnerabilities[index].Vulnerability.Type
-		for _, acceptedType := range a.config.GetShowVulnerabilitiesTypes() {
+		for _, acceptedType := range a.config.ShowVulnerabilitiesTypes {
 			if strings.EqualFold(vulnType.ToString(), acceptedType) {
 				vulnerabilities = append(vulnerabilities, a.analysis.AnalysisVulnerabilities[index])
 				break
