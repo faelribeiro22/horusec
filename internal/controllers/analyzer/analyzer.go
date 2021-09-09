@@ -77,6 +77,8 @@ import (
 	"github.com/ZupIT/horusec/internal/utils/file"
 )
 
+const LoadingDelay = 200 * time.Millisecond
+
 // LanguageDetect is the interface that detect all languages in some directory.
 type LanguageDetect interface {
 	Detect(directory string) ([]languages.Language, error)
@@ -107,6 +109,7 @@ type Analyzer struct {
 	loading         *spinner.Spinner
 }
 
+//nolint:funlen
 func NewAnalyzer(cfg *config.Config) *Analyzer {
 	entity := &analysis.Analysis{
 		ID:        uuid.New(),
@@ -635,7 +638,7 @@ func spawn(wg *sync.WaitGroup, f formatters.IFormatter, src string) {
 }
 
 func newScanLoading() *spinner.Spinner {
-	loading := spinner.New(spinner.CharSets[11], 200*time.Millisecond)
+	loading := spinner.New(spinner.CharSets[11], LoadingDelay)
 	loading.Suffix = messages.MsgInfoAnalysisLoading
 
 	return loading
